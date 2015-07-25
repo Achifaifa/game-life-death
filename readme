@@ -2,5 +2,16 @@
 
 Multiplayer console game for the #EE23 fast FOSS game compo
 
-Player one (red) assumes the role of a bad-mannered gamer yelling at a LANparty. move with wars(wasd equivalent) through yand press f(e) to make one of the other partygoers yell. 
+Player one (red) assumes the role of a bad-mannered gamer yelling at a LANparty. move with wars(wasd equivalent) through and press f(e) to make one of the other partygoers yell. 
 
+As the ORG, the 2nd player (blue) has to give the red one a paddling, going to his current position and avoiding the yelling people. 
+
+The rules for yelling people expansion/retraction are the same as those of conway's game of life
+
+Game by Achifaifa(BF35)
+
+Dependencies: Python and standard libraries
+
+Default keys: warsqf (red player) and unei (blue player)
+
+Commit presentado: [master a9e443c] pre-release commit
