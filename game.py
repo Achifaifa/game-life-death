@@ -1,6 +1,6 @@
 #! /usr/bin/env python
 
-import os, select, sys, termios, time, tty
+import copy, os, select, sys, termios, time, tty
 
 class player:
 
@@ -28,25 +28,25 @@ class player:
     2: kill condition
     """
 
-    if self.last==self.up and self.ypos>0:
+    if self.last=="up" and self.ypos>0:
       if self.colour=="red" and terrain.grid[self.ypos-1][self.xpos]=="@": return 2
       elif self.colour=="blue" and terrain.grid[self.ypos-1][self.xpos]=="#": return 2
       else: self.ypos-=1
       return 1
 
-    elif self.last==self.down and self.ypos<39:
+    elif self.last=="down" and self.ypos<39:
       if self.colour=="red" and terrain.grid[self.ypos+1][self.xpos]=="@": return 2
       elif self.colour=="blue" and terrain.grid[self.ypos+1][self.xpos]=="#": return 2
       else: self.ypos+=1
       return 1
 
-    elif self.last==self.right and self.xpos<79:
+    elif self.last=="right" and self.xpos<79:
       if self.colour=="red" and terrain.grid[self.ypos][self.xpos+1]=="@": return 2
       elif self.colour=="blue" and terrain.grid[self.ypos][self.xpos+1]=="#": return 2
       else: self.xpos+=1
       return 1
 
-    elif self.last==self.left and self.xpos>0:
+    elif self.last=="left" and self.xpos>0:
       if self.colour=="red" and terrain.grid[self.ypos][self.xpos-1]=="@": return 2
       elif self.colour=="blue" and terrain.grid[self.ypos][self.xpos-1]=="#": return 2
       else: self.xpos-=1
@@ -58,30 +58,46 @@ class terrain:
   def __init__(self):
 
     self.grid=[[" " for i in range(80)] for i in range(40)]
+    self.running=0
 
   def processcells(self):
 
+    future=[[" " for i in range(80)] for i in range(40)]
     for idx,i in enumerate(self.grid):
-      for jdx,j in enumerate(self.grid[idx]):
+      for jdx,j in enumerate(i):
         neighbours=""
-        try:neigbours+=self.grid[idx-i][jdx]
+        try:neighbours+=self.grid[idx-1][jdx]
         except IndexError: pass
-        try:neigbours+=self.grid[idx+i][jdx]
+        try:neighbours+=self.grid[idx+1][jdx]
         except IndexError: pass
-        try:neigbours+=self.grid[idx][jdx+1]
+        try:neighbours+=self.grid[idx][jdx+1]
         except IndexError: pass
-        try:neigbours+=self.grid[idx][jdx-1]
+        try:neighbours+=self.grid[idx][jdx-1]
         except IndexError: pass
-        if neighbours.count("#")<2: self.grid[idx][jdx]=" "
-        elif neighbours.count("#")>3: self.grid[idx][jdx]="#"
+        try:neighbours+=self.grid[idx-1][jdx-1]
+        except IndexError: pass
+        try:neighbours+=self.grid[idx+1][jdx+1]
+        except IndexError: pass
+        try:neighbours+=self.grid[idx+1][jdx-1]
+        except IndexError: pass
+        try:neighbours+=self.grid[idx-1][jdx+1]
+        except IndexError: pass
+        if neighbours.count("#")<2: future[idx][jdx]=" "
+        elif neighbours.count("#")>3: future[idx][jdx]=" "
+        if neighbours.count("#")==3 and j==" ": future[idx][jdx]="#"
+        self.grid=copy.deepcopy(future)
 
   def display(self,player1,player2):
 
     os.system('clear')
-    displaygrid=self.grid
-    displaygrid[player1.ypos][player1.xpos]="."
-    displaygrid[player2.ypos][player2.xpos]="@"
+    displaygrid=copy.deepcopy(self.grid)
+    displaygrid[player1.ypos][player1.xpos]="\033[31m@\033[0m"
+    displaygrid[player2.ypos][player2.xpos]="\033[35m0\033[0m"
     for i in displaygrid: print "".join(i)
+    if self.running: print "RUNNING",
+    print player1.xpos,player1.ypos,player2.xpos,player2.ypos
+    print "Player 1:",player1.up,player1.down,player1.right,player1.left
+    print "Player 2:",player2.up,player2.down,player2.right,player2.left
 
   def putcell(self,x,y):
 
@@ -112,7 +128,6 @@ def iterate():
     return 1
   return 0
 
-directions=["up","down","right","left"]
 def mainloop(red,blue,arena):
 
   #Record current pressed key
@@ -121,24 +136,30 @@ def mainloop(red,blue,arena):
   elif pressedkey==red.down:      red.last="down"
   elif pressedkey==red.right:     red.last="right"
   elif pressedkey==red.left:      red.last="left"
-  elif pressedkey==red.put:       red.last="put"
   elif pressedkey==red.stoptime:  red.last="startstop"
+  elif pressedkey==red.put:       red.last="put"
   elif pressedkey==blue.up:       blue.last="up"
   elif pressedkey==blue.down:     blue.last="down"
   elif pressedkey==blue.right:    blue.last="right"
   elif pressedkey==blue.left:     blue.last="left"
   elif pressedkey=="j":os.system('clear');exit()
 
-  if red.last=="startstop": arena.processcells()
+  
 
   if iterate():
-    if red.last in directions: 
+    if red.last in ["up","down","right","left"]: 
       red.move(arena)
-      # red.last=""
-    elif red.last=="put": arena.putcell(red.xpos,red.ypos)
-    if blue.last in directions: 
+      red.last=""
+    elif red.last=="put": 
+      arena.putcell(red.xpos,red.ypos)
+      red.last=""
+    if blue.last in ["up","down","right","left"]: 
       blue.move(arena)
-      # blue.last=""
+      blue.last=""
+    if red.last=="startstop": 
+      arena.running^=1
+      red.last=""
+    if arena.running: arena.processcells()
     
     arena.display(red,blue)
 
