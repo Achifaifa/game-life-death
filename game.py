@@ -2,6 +2,15 @@
 
 import copy, os, select, sys, termios, time, tty
 
+def gameover(winrar):
+
+  os.system('clear')
+  print "\n"*10+" "*15+"GAME OVER"
+  if winrar=="red": print " "*15+"RED WINS"
+  else: print " "*15+"BLUE WINS"
+  raw_input()
+  exit()
+
 class player:
 
   def __init__(self,upk,downk,rightk,leftk,typep):
@@ -21,7 +30,7 @@ class player:
     self.xpos=2 if typep=="red" else 78
     self.ypos=2 if typep=="red" else 38
 
-  def move(self,terrain):
+  def move(self,terrain,opponent):
     """
     0: Out of bounds
     1: ok
@@ -29,26 +38,30 @@ class player:
     """
 
     if self.last=="up" and self.ypos>0:
-      if self.colour=="red" and terrain.grid[self.ypos-1][self.xpos]=="@": return 2
-      elif self.colour=="blue" and terrain.grid[self.ypos-1][self.xpos]=="#": return 2
+      if self.colour=="red" and (self.xpos,self.ypos-1)==(opponent.xpos,opponent.ypos): gameover("blue")
+      elif self.colour=="blue" and terrain.grid[self.ypos-1][self.xpos]=="#": gameover("red")
+      elif self.colour=="blue" and (self.xpos,self.ypos-1)==(opponent.xpos,opponent.ypos): gameover("blue")
       else: self.ypos-=1
       return 1
 
     elif self.last=="down" and self.ypos<39:
-      if self.colour=="red" and terrain.grid[self.ypos+1][self.xpos]=="@": return 2
-      elif self.colour=="blue" and terrain.grid[self.ypos+1][self.xpos]=="#": return 2
+      if self.colour=="red" and (self.xpos,self.ypos+1)==(opponent.xpos,opponent.ypos): gameover("blue")
+      elif self.colour=="blue" and terrain.grid[self.ypos+1][self.xpos]=="#": gameover("red")
+      elif self.colour=="blue" and (self.xpos,self.ypos+1)==(opponent.xpos,opponent.ypos): gameover("blue")
       else: self.ypos+=1
       return 1
 
     elif self.last=="right" and self.xpos<79:
-      if self.colour=="red" and terrain.grid[self.ypos][self.xpos+1]=="@": return 2
-      elif self.colour=="blue" and terrain.grid[self.ypos][self.xpos+1]=="#": return 2
+      if self.colour=="red" and (self.xpos+1,self.ypos)==(opponent.xpos,opponent.ypos): gameover("blue")
+      elif self.colour=="blue" and terrain.grid[self.ypos][self.xpos+1]=="#": gameover("red")
+      elif self.colour=="blue" and (self.xpos+1,self.ypos)==(opponent.xpos,opponent.ypos): gameover("blue")
       else: self.xpos+=1
       return 1
 
     elif self.last=="left" and self.xpos>0:
-      if self.colour=="red" and terrain.grid[self.ypos][self.xpos-1]=="@": return 2
-      elif self.colour=="blue" and terrain.grid[self.ypos][self.xpos-1]=="#": return 2
+      if self.colour=="red" and (self.xpos-1,self.ypos)==(opponent.xpos,opponent.ypos): gameover("blue")
+      elif self.colour=="blue" and terrain.grid[self.ypos][self.xpos-1]=="#": gameover("red")
+      elif self.colour=="blue" and (self.xpos-1,self.ypos)==(opponent.xpos,opponent.ypos): gameover("blue")
       else: self.xpos-=1
       return 1
     else: return 0
@@ -60,9 +73,9 @@ class terrain:
     self.grid=[[" " for i in range(80)] for i in range(40)]
     self.running=0
 
-  def processcells(self):
+  def processcells(self,blue):
 
-    future=[[" " for i in range(80)] for i in range(40)]
+    futurear=[[" " for i in range(80)] for i in range(40)]
     for idx,i in enumerate(self.grid):
       for jdx,j in enumerate(i):
         neighbours=""
@@ -82,17 +95,22 @@ class terrain:
         except IndexError: pass
         try:neighbours+=self.grid[idx-1][jdx+1]
         except IndexError: pass
-        if neighbours.count("#")<2: future[idx][jdx]=" "
-        elif neighbours.count("#")>3: future[idx][jdx]=" "
-        if neighbours.count("#")==3 and j==" ": future[idx][jdx]="#"
-        self.grid=copy.deepcopy(future)
+        if neighbours.count("#")<2: futurear[idx][jdx]=" "
+        elif neighbours.count("#")>3: futurear[idx][jdx]=" "
+        elif neighbours.count("#") in [2,3] and j=="#": 
+          futurear[idx][jdx]="#"
+          if (jdx,idx)==(blue.xpos,blue.ypos): gameover("red")
+        if neighbours.count("#")==3 and j==" ": 
+          futurear[idx][jdx]="#"
+          if (jdx,idx)==(blue.xpos,blue.ypos): gameover("red")
+    self.grid=copy.deepcopy(futurear)
 
   def display(self,player1,player2):
 
     os.system('clear')
     displaygrid=copy.deepcopy(self.grid)
     displaygrid[player1.ypos][player1.xpos]="\033[31m@\033[0m"
-    displaygrid[player2.ypos][player2.xpos]="\033[35m0\033[0m"
+    displaygrid[player2.ypos][player2.xpos]="\033[34m0\033[0m"
     for i in displaygrid: print "".join(i)
     if self.running: print "RUNNING",
     print player1.xpos,player1.ypos,player2.xpos,player2.ypos
@@ -148,18 +166,18 @@ def mainloop(red,blue,arena):
 
   if iterate():
     if red.last in ["up","down","right","left"]: 
-      red.move(arena)
+      red.move(arena,blue)
       red.last=""
     elif red.last=="put": 
       arena.putcell(red.xpos,red.ypos)
       red.last=""
     if blue.last in ["up","down","right","left"]: 
-      blue.move(arena)
+      blue.move(arena,red)
       blue.last=""
     if red.last=="startstop": 
       arena.running^=1
       red.last=""
-    if arena.running: arena.processcells()
+    if arena.running: arena.processcells(blue)
     
     arena.display(red,blue)
 
